@@ -1,58 +1,79 @@
-# capa de vista/presentación
-
-from django.shortcuts import redirect, render
-from .layers.services import services
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth import logout
+from django.contrib.auth import logout, login, authenticate
+from django.contrib.auth.models import User
+from django.http import HttpResponse
+from django.views.decorators.http import require_POST
 
+from .layers.services import services
+from .layers.persistence import repositories  
+
+# Página de bienvenida
 def index_page(request):
     return render(request, 'index.html')
 
-# esta función obtiene 2 listados: uno de las imágenes de la API y otro de favoritos, ambos en formato Card, y los dibuja en el template 'home.html'.
+# Registro de usuarios
+def register(request):
+    if request.method == 'POST':
+        nombre = request.POST['username']
+        email = request.POST['email']
+        contraseña = request.POST['password']
+
+        if not User.objects.filter(username=nombre).exists():
+            usuario = User.objects.create_user(username=nombre, email=email, password=contraseña)
+            usuario = authenticate(request, username=nombre, password=contraseña)
+            login(request, usuario)
+            return redirect('home')
+        else:
+            return HttpResponse("Ese nombre de usuario ya existe.")
+    return render(request, 'register.html')
+
+# Página principal con galería
 def home(request):
-    images = []
-    favourite_list = []
+    images = services.getAllImages()
+    favourite_list = services.getAllFavourites(request)
+    return render(request, 'home.html', {'images': images, 'favourite_list': favourite_list})
 
-    return render(request, 'home.html', { 'images': images, 'favourite_list': favourite_list })
-
-# función utilizada en el buscador.
+# Búsqueda por nombre
 def search(request):
     name = request.POST.get('query', '')
+    if name:
+        images = services.filterByCharacter(name)
+        favourite_list = services.getAllFavourites(request)
+        return render(request, 'home.html', {'images': images, 'favourite_list': favourite_list})
+    return redirect('home')
 
-    # si el usuario ingresó algo en el buscador, se deben filtrar las imágenes por dicho ingreso.
-    if (name != ''):
-        images = []
-        favourite_list = []
-
-        return render(request, 'home.html', { 'images': images, 'favourite_list': favourite_list })
-    else:
-        return redirect('home')
-
-# función utilizada para filtrar por el tipo del Pokemon
+# Filtrado por tipo
 def filter_by_type(request):
-    type = request.POST.get('type', '')
+    tipo = request.POST.get('type', '')
+    if tipo:
+        images = services.filterByType(tipo)
+        favourite_list = services.getAllFavourites(request)
+        return render(request, 'home.html', {'images': images, 'favourite_list': favourite_list})
+    return redirect('home')
 
-    if type != '':
-        images = [] # debe traer un listado filtrado de imágenes, segun si es o contiene ese tipo.
-        favourite_list = []
-
-        return render(request, 'home.html', { 'images': images, 'favourite_list': favourite_list })
-    else:
-        return redirect('home')
-
-# Estas funciones se usan cuando el usuario está logueado en la aplicación.
+# Mostrar favoritos del usuario actual
 @login_required
 def getAllFavouritesByUser(request):
-    pass
+    favourites = services.getAllFavourites(request)
+    return render(request, 'favourites.html', {'favourite_list': favourites})
 
+# Guardar favorito
 @login_required
 def saveFavourite(request):
-    pass
+    services.saveFavourite(request)
+    return redirect('home')
 
+# Eliminar favorito
+@require_POST
 @login_required
 def deleteFavourite(request):
-    pass
+    fav_id = request.POST.get("id")
+    if fav_id:
+        repositories.delete_favourite(fav_id, request.user)
+    return redirect("favoritos")
 
+# Cerrar sesión
 @login_required
 def exit(request):
     logout(request)

@@ -3,17 +3,17 @@
 from sqlite3 import IntegrityError
 from app.models import Favourite
 
-
 def save_favourite(fav):
     try:
         fav = Favourite.objects.create(
-            name=fav.name,  # Nombre del personaje
-            id=fav.id,
-            types=fav.types,  # tipos
-            height=fav.height,  # altura
-            weight=fav.weight,  # peso
-            image=fav.image,  # Imagen
-            user=fav.user  # Usuario autenticado
+            pokemon_id=fav.id,              # ID del Pokémon (no del registro)
+            name=fav.name,
+            types=fav.types,
+            height=fav.height,
+            weight=fav.weight,
+            base_experience=fav.base,
+            image=fav.image,
+            user=fav.user
         )
         return fav
     except IntegrityError as e:
@@ -23,16 +23,15 @@ def save_favourite(fav):
         print(f"Error de datos al guardar el favorito: Falta el campo {e}")
         return None
 
-
 def get_all_favourites(user):
     return list(Favourite.objects.filter(user=user).values(
-        'id', 'name', 'height', 'weight', 'types','base_experience', 'image'
-    ))
+    'id', 'pokemon_id', 'name', 'height', 'weight', 'types', 'base_experience', 'image'
+))
+    
 
-
-def delete_favourite(fav_id):
+def delete_favourite(fav_id, user):
     try:
-        favourite = Favourite.objects.get(id=fav_id)
+        favourite = Favourite.objects.get(id=fav_id, user=user)
         favourite.delete()
         return True
     except Favourite.DoesNotExist:

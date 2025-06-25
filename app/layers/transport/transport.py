@@ -5,9 +5,9 @@ from ...config import config
 
 # comunicación con la REST API.
 # este método se encarga de "pegarle" a la API y traer una lista de objetos JSON.
-def getAllImages():
+def get_all_data():
     json_collection = []
-    for id in range(1, 30):
+    for id in range(1, 5):
         response = requests.get(config.STUDENTS_REST_API_URL + str(id))
 
         # si la búsqueda no arroja resultados, entonces retornamos una lista vacía de elementos.    
